@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FULL PRO POS</title>
+
+<style>
+body{font-family:Arial;background:#eef2f7;margin:0;}
+.header{background:#1976d2;color:#fff;padding:10px;text-align:center;}
+
+.box{padding:10px;}
+
+.card{
+  background:#fff;
+  padding:10px;
+  border-radius:10px;
+  margin:5px 0;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+}
+
+button{
+  width:100%;
+  padding:8px;
+  margin-top:5px;
+  background:#1976d2;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+}
+
+input,select{
+  width:100%;
+  padding:8px;
+  margin:5px 0;
+}
+
+.footer{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  background:#fff;
+  padding:10px;
+  box-shadow:0 -2px 5px rgba(0,0,0,0.1);
+}
+
+.hide{display:none;}
+</style>
+</head>
+
+<body>
+
+<div class="header">🏪 FULL PRO POS SYSTEM</div>
+
+<div class="box">
+
+<!-- LOGIN -->
+<div id="loginBox">
+  <input id="user" placeholder="Username">
+  <input id="pass" type="password" placeholder="Password">
+  <button onclick="login()">LOGIN</button>
+</div>
+
+<!-- APP -->
+<div id="app" class="hide">
+
+<h3 id="roleText"></h3>
+
+<!-- ADMIN ONLY -->
+<div id="adminPanel" class="hide">
+  <h3>👑 ADD PRODUCT</h3>
+  <input id="pname" placeholder="Product">
+  <input id="pprice" placeholder="Price">
+  <input id="pstock" placeholder="Stock">
+  <button onclick="addProduct()">ADD</button>
+</div>
+
+<!-- PRODUCTS -->
+<h3>📦 PRODUCTS</h3>
+<div class="grid" id="plist"></div>
+
+<hr>
+
+<!-- CART -->
+<h3>🛒 CART</h3>
+<div id="cartBox"></div>
+
+<!-- CUSTOMER -->
+<input id="customer" placeholder="Customer name">
+
+<!-- PAYMENT -->
+<select id="payType">
+  <option value="cash">💵 Cash</option>
+  <option value="credit">💳 Credit (Qarz)</option>
+  <option value="installment">📆 Installment (Qist)</option>
+</select>
+
+<button onclick="checkout()">CHECKOUT</button>
+
+</div>
+
+<!-- FOOTER TOTAL -->
+<div class="footer">
+💰 TOTAL: <span id="total">0</span> $
+</div>
+
+<script>
+
+/* USERS */
+let users=[
+  {u:"admin",p:"1122",role:"admin"},
+  {u:"staff",p:"1133",role:"cashier"}
+];
+
+let role="";
+
+/* DATA */
+let products=JSON.parse(localStorage.getItem("products")||"[]");
+let cart=[];
+
+/* LOGIN */
+function login(){
+
+  let ok=users.find(x=>x.u==user.value && x.p==pass.value);
+
+  if(!ok){ alert("Wrong login ❌"); return; }
+
+  role=ok.role;
+
+  loginBox.classList.add("hide");
+  app.classList.remove("hide");
+
+  roleText.innerHTML="Role: "+role;
+
+  if(role=="admin"){
+    adminPanel.classList.remove("hide");
+  }
+
+  render();
+}
+
+/* ADD PRODUCT (ADMIN ONLY) */
+function addProduct(){
+
+  if(role!="admin"){
+    alert("Only admin can add products ❌");
+    return;
+  }
+
+  products.push({
+    name:pname.value,
+    price:Number(pprice.value),
+    stock:Number(pstock.value)
+  });
+
+  localStorage.setItem("products",JSON.stringify(products));
+  render();
+}
+
+/* ADD TO CART */
+function addToCart(i){
+
+  let p=products[i];
+
+  let item=cart.find(x=>x.name===p.name);
+
+  if(item){
+    item.qty++;
+  }else{
+    cart.push({
+      name:p.name,
+      price:p.price,
+      qty:1
+    });
+  }
+
+  renderCart();
+}
+
+/* RENDER PRODUCTS */
+function render(){
+
+  plist.innerHTML="";
+
+  products.forEach((p,i)=>{
+
+    plist.innerHTML+=`
+      <div class="card">
+        🛒 ${p.name}<br>
+        💰 ${p.price}$<br>
+        📦 ${p.stock}
+
+        <button onclick="addToCart(${i})">ADD</button>
+      </div>
+    `;
+  });
+
+  renderCart();
+}
+
+/* CART */
+function renderCart(){
+
+  cartBox.innerHTML="";
+
+  let total=0;
+
+  cart.forEach((c,i)=>{
+
+    let t=c.price*c.qty;
+    total+=t;
+
+    cartBox.innerHTML+=`
+      <div class="card">
+        ${c.name}<br>
+        Qty: ${c.qty}<br>
+        Total: ${t}$
+        <button onclick="plus(${i})">+</button>
+        <button onclick="minus(${i})">-</button>
+      </div>
+    `;
+  });
+
+  document.getElementById("total").innerText=total;
+}
+
+/* QTY */
+function plus(i){
+  cart[i].qty++;
+  renderCart();
+}
+
+function minus(i){
+  cart[i].qty--;
+  if(cart[i].qty<=0) cart.splice(i,1);
+  renderCart();
+}
+
+/* CHECKOUT */
+function checkout(){
+
+  let type=payType.value;
+  let customer=customer.value || "Walk-in";
+  let total=cart.reduce((a,b)=>a+b.price*b.qty,0);
+
+  if(cart.length===0){
+    alert("Cart empty ❌");
+    return;
+  }
+
+  if(type==="cash"){
+    alert("💵 CASH PAID: "+total);
+  }
+
+  if(type==="credit"){
+    alert("💳 SAVED AS QARZ: "+total);
+  }
+
+  if(type==="installment"){
+    alert("📆 INSTALLMENT SAVED: "+total);
+  }
+
+  cart=[];
+  renderCart();
+}
+
+/* INIT */
+render();
+
+</script>
+
+</body>
+</html>
